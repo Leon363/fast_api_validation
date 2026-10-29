@@ -39,7 +39,28 @@ async def get_country_info(country_name: str) -> CountryInfo:
     if not objects:
         logger.warning(f"Country {country_name} not found")
         raise HTTPException(status_code=400, detail=f"Country info not found: {country_name}")
-    item = objects[0]
+    # item = objects[0]
+    item = None
+    query_clean = country_name.strip().lower()
+
+    for obj in objects:
+        names_dict = obj.get("names", {})
+        codes_dict = obj.get("codes", {})
+
+        common_name = names_dict.get("common", "").strip().lower()
+        official_name = names_dict.get("official", "").strip().lower()
+        alt_names = [alt.strip().lower() for alt in names_dict.get("alternates", []) if isinstance(alt, str)]
+
+        alpha2 = codes_dict.get("alpha_2", "").strip().lower()
+        alpha3 = codes_dict.get("alpha_3", "").strip().lower()
+
+        if query_clean in (common_name, official_name, alpha2, alpha3) or query_clean in alt_names:
+            item = obj
+            break
+
+    if not item:
+        logger.warning(f"Exact match for '{country_name}' not found in names/codes. Using fallback first result.")
+        item = objects[0]
     try:
         capital = item["capitals"][0]["name"]
         currency_code = item["currencies"][0]["code"]
